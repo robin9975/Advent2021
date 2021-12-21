@@ -1,17 +1,7 @@
 
 
 
-fn die_roll_universes() -> Vec<(usize, usize)> {
-    vec![
-        (3, 1),
-        (4, 3),
-        (5, 6),
-        (6, 7),
-        (7, 6),
-        (8, 3),
-        (9, 1)
-    ]
-}
+static die_roll_universes:  [(usize, usize); 7] = [ (3, 1), (4, 3), (5, 6), (6, 7), (7, 6), (8, 3), (9, 1) ];
 
 
 #[derive(Debug, Clone)]
@@ -51,30 +41,30 @@ impl Game {
 
 
     fn step_p1(&self) -> Vec<(Game, usize)> {
-        let roll = die_roll_universes();
+        let roll = &die_roll_universes;
 
-        let mut games = vec![];
+        let mut games = Vec::with_capacity(7);
         for (throw, num_universes) in roll {
             let mut g = self.clone();
             g.next_turn = 2;
             g.p1_position = (self.p1_position + throw) % 10;
             g.p1_score += g.p1_position + 1; // we index position 0-9 instead of 1-10
-            games.push((g, num_universes));
+            games.push((g, *num_universes));
         }
 
         games
     }
 
     fn step_p2(&self) -> Vec<(Game, usize)> {
-        let roll = die_roll_universes();
+        let roll = &die_roll_universes;
 
-        let mut games = vec![];
+        let mut games = Vec::with_capacity(7);
         for (throw, num_universes) in roll {
             let mut g = self.clone();
             g.next_turn = 1;
             g.p2_position = (self.p2_position + throw) % 10;
             g.p2_score += g.p2_position + 1; // we index position 0-9 instead of 1-10
-            games.push((g, num_universes));
+            games.push((g, *num_universes));
         }
 
         games
@@ -82,7 +72,8 @@ impl Game {
 }
 
 fn main() {
-    let mut global_games = vec![(Game::new(8, 2), 1)];
+    let mut global_games = Vec::with_capacity(1000000000);
+    global_games.push((Game::new(8, 2), 1));
 
     let mut p1_games_won = 0;
     let mut p2_games_won = 0;
@@ -90,21 +81,19 @@ fn main() {
     loop {
         let (current_game, game_count) = global_games.pop().unwrap();
         let games = current_game.step();
-        let p1_won: usize = games.iter()
-            .filter(|(g, c)| g.has_won() == Some(1))
-            .map(|(_, c)| c * game_count)
-            .sum();
-        p1_games_won += p1_won;
-        let p2_won: usize = games.iter()
-            .filter(|(g, c)| g.has_won() == Some(2))
-            .map(|(_, c)| c * game_count)
-            .sum();
-        p2_games_won += p2_won;
 
-        let to_handle = games.into_iter()
-            .filter(|(g, c)| g.has_won().is_none())
-            .map(|(g, c)| (g, c * game_count));
-        global_games.extend(to_handle);
+        for (g, c) in games.into_iter() {
+            let mut done = true;
+            match g.has_won() {
+                Some(1) => p1_games_won += c * game_count,
+                Some(2) => p2_games_won += c * game_count,
+                Some(_) => unreachable!(),
+                None => {
+                    done = false;
+                    global_games.push((g, c * game_count))
+                },
+            }
+        }
 
         if global_games.len() == 0 {
             break;
